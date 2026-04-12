@@ -1,0 +1,1675 @@
+{
+  "info": {
+    "name": "Revelio API - Smoke & FSM",
+    "description": "Collection Postman per verificare autenticazione, worklist, autorizzazioni e transizioni FSM di Revelio.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Health 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.test(\"Health status ok\", function () {",
+              "  pm.expect(body.status).to.eql(\"ok\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Login 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "pm.test(\"Token presente\", function () {",
+              "  pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"token\", data.access_token);",
+              "pm.collectionVariables.set(\"technician_id\", String(data.technician.id));",
+              "pm.collectionVariables.set(\"technician_username\", data.technician.username);",
+              "pm.collectionVariables.set(\"technician_full_name\", data.technician.full_name);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "me"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Me 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var me = pm.response.json();",
+              "pm.test(\"Utente coerente con login\", function () {",
+              "  pm.expect(String(me.id)).to.eql(pm.collectionVariables.get(\"technician_id\"));",
+              "  pm.expect(me.username).to.eql(pm.collectionVariables.get(\"technician_username\"));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Machines",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Machines 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var machines = pm.response.json();",
+              "pm.test(\"Elenco macchine presente\", function () {",
+              "  pm.expect(Array.isArray(machines)).to.eql(true);",
+              "  pm.expect(machines.length).to.be.at.least(3);",
+              "});",
+              "",
+              "var codes = machines.map(function (m) { return m.code; }).sort();",
+              "pm.collectionVariables.set(\"machine_codes\", JSON.stringify(codes));",
+              "",
+              "[\"RM\", \"TC\", \"RX\"].forEach(function (code) {",
+              "  pm.test(\"Macchina \" + code + \" presente\", function () {",
+              "    pm.expect(codes).to.include(code);",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05.RM Worklist RM",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/RM/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "RM",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Worklist RM 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "pm.test(\"Macchina coerente (RM)\", function () {",
+              "  pm.expect(data.machine.code).to.eql(\"RM\");",
+              "});",
+              "",
+              "pm.test(\"Sessioni presenti (RM)\", function () {",
+              "  pm.expect(Array.isArray(data.sessions)).to.eql(true);",
+              "  pm.expect(data.sessions.length).to.be.at.least(1);",
+              "});",
+              "",
+              "var FSM = [\"SCHEDULED\", \"ARRIVED\", \"IN_PROGRESS\", \"COMPLETED\", \"CANCELLED\"].sort();",
+              "",
+              "data.sessions.forEach(function (session) {",
+              "  var statuses = session.exams.map(function (exam) { return exam.status; });",
+              "",
+              "  if (session.is_active_now) {",
+              "    pm.test(\"[RM] session \" + session.id + \" copertura FSM\", function () {",
+              "      var uniqueStatuses = Array.from(new Set(statuses)).sort();",
+              "      pm.expect(uniqueStatuses).to.eql(FSM);",
+              "    });",
+              "  } else {",
+              "    pm.test(\"[RM] session \" + session.id + \" fuori turno solo SCHEDULED\", function () {",
+              "      statuses.forEach(function (status) {",
+              "        pm.expect(status).to.eql(\"SCHEDULED\");",
+              "      });",
+              "    });",
+              "  }",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"worklist_RM\", JSON.stringify(data));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05.TC Worklist TC",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/TC/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "TC",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Worklist TC 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "pm.test(\"Macchina coerente (TC)\", function () {",
+              "  pm.expect(data.machine.code).to.eql(\"TC\");",
+              "});",
+              "",
+              "pm.test(\"Sessioni presenti (TC)\", function () {",
+              "  pm.expect(Array.isArray(data.sessions)).to.eql(true);",
+              "  pm.expect(data.sessions.length).to.be.at.least(1);",
+              "});",
+              "",
+              "var FSM = [\"SCHEDULED\", \"ARRIVED\", \"IN_PROGRESS\", \"COMPLETED\", \"CANCELLED\"].sort();",
+              "",
+              "data.sessions.forEach(function (session) {",
+              "  var statuses = session.exams.map(function (exam) { return exam.status; });",
+              "",
+              "  if (session.is_active_now) {",
+              "    pm.test(\"[TC] session \" + session.id + \" copertura FSM\", function () {",
+              "      var uniqueStatuses = Array.from(new Set(statuses)).sort();",
+              "      pm.expect(uniqueStatuses).to.eql(FSM);",
+              "    });",
+              "  } else {",
+              "    pm.test(\"[TC] session \" + session.id + \" fuori turno solo SCHEDULED\", function () {",
+              "      statuses.forEach(function (status) {",
+              "        pm.expect(status).to.eql(\"SCHEDULED\");",
+              "      });",
+              "    });",
+              "  }",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"worklist_TC\", JSON.stringify(data));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05.RX Worklist RX",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/RX/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "RX",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Worklist RX 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "pm.test(\"Macchina coerente (RX)\", function () {",
+              "  pm.expect(data.machine.code).to.eql(\"RX\");",
+              "});",
+              "",
+              "pm.test(\"Sessioni presenti (RX)\", function () {",
+              "  pm.expect(Array.isArray(data.sessions)).to.eql(true);",
+              "  pm.expect(data.sessions.length).to.be.at.least(1);",
+              "});",
+              "",
+              "var FSM = [\"SCHEDULED\", \"ARRIVED\", \"IN_PROGRESS\", \"COMPLETED\", \"CANCELLED\"].sort();",
+              "",
+              "data.sessions.forEach(function (session) {",
+              "  var statuses = session.exams.map(function (exam) { return exam.status; });",
+              "",
+              "  if (session.is_active_now) {",
+              "    pm.test(\"[RX] session \" + session.id + \" copertura FSM\", function () {",
+              "      var uniqueStatuses = Array.from(new Set(statuses)).sort();",
+              "      pm.expect(uniqueStatuses).to.eql(FSM);",
+              "    });",
+              "  } else {",
+              "    pm.test(\"[RX] session \" + session.id + \" fuori turno solo SCHEDULED\", function () {",
+              "      statuses.forEach(function (status) {",
+              "        pm.expect(status).to.eql(\"SCHEDULED\");",
+              "      });",
+              "    });",
+              "  }",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"worklist_RX\", JSON.stringify(data));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Select Exams",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Select Exams helper 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var meId = Number(pm.collectionVariables.get(\"technician_id\"));",
+              "var finalStatuses = new Set([\"COMPLETED\", \"CANCELLED\"]);",
+              "",
+              "var worklists = [\"RM\", \"TC\", \"RX\"].map(function (code) {",
+              "  return JSON.parse(pm.collectionVariables.get(\"worklist_\" + code));",
+              "});",
+              "",
+              "var foreignExamId = null;",
+              "var ownActiveCandidate = null;",
+              "var ownInactiveCandidate = null;",
+              "",
+              "function targetFromStatus(status) {",
+              "  if (status === \"SCHEDULED\") {",
+              "    return \"ARRIVED\";",
+              "  }",
+              "  if (status === \"ARRIVED\") {",
+              "    return \"IN_PROGRESS\";",
+              "  }",
+              "  if (status === \"IN_PROGRESS\") {",
+              "    return \"COMPLETED\";",
+              "  }",
+              "  return \"ARRIVED\";",
+              "}",
+              "",
+              "worklists.forEach(function (worklist) {",
+              "  worklist.sessions.forEach(function (session) {",
+              "    session.exams.forEach(function (exam) {",
+              "      if (finalStatuses.has(exam.status)) {",
+              "        return;",
+              "      }",
+              "",
+              "      var ownSession = session.technician_id === meId;",
+              "",
+              "      if (!ownSession && foreignExamId === null) {",
+              "        foreignExamId = exam.id;",
+              "      }",
+              "",
+              "      if (ownSession && session.is_active_now && ownActiveCandidate === null) {",
+              "        ownActiveCandidate = {",
+              "          id: exam.id,",
+              "          status: exam.status,",
+              "          sessionId: session.id,",
+              "        };",
+              "      }",
+              "",
+              "      if (ownSession && ownInactiveCandidate === null) {",
+              "        ownInactiveCandidate = {",
+              "          id: exam.id,",
+              "          status: exam.status,",
+              "          sessionId: session.id,",
+              "          isActiveNow: session.is_active_now,",
+              "        };",
+              "      }",
+              "    });",
+              "  });",
+              "});",
+              "",
+              "pm.test(\"Esame foreign individuato\", function () {",
+              "  pm.expect(foreignExamId).to.not.eql(null);",
+              "});",
+              "pm.collectionVariables.set(\"foreign_exam_id\", String(foreignExamId));",
+              "",
+              "if (ownActiveCandidate !== null) {",
+              "  pm.collectionVariables.set(\"managed_exam_id\", String(ownActiveCandidate.id));",
+              "  pm.collectionVariables.set(\"managed_exam_mode\", \"ACTIVE\");",
+              "  pm.collectionVariables.set(\"target_status\", targetFromStatus(ownActiveCandidate.status));",
+              "  pm.collectionVariables.set(\"expected_transition_http_status\", \"200\");",
+              "} else {",
+              "  pm.test(\"Esame proprio (fuori turno) individuato\", function () {",
+              "    pm.expect(ownInactiveCandidate).to.not.eql(null);",
+              "  });",
+              "",
+              "  pm.collectionVariables.set(\"managed_exam_id\", String(ownInactiveCandidate.id));",
+              "  pm.collectionVariables.set(\"managed_exam_mode\", \"INACTIVE\");",
+              "  pm.collectionVariables.set(\"target_status\", \"ARRIVED\");",
+              "  pm.collectionVariables.set(\"expected_transition_http_status\", \"403\");",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Foreign Exam Detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{foreign_exam_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{foreign_exam_id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Foreign exam detail 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var detail = pm.response.json();",
+              "pm.test(\"Transizioni nascoste su esame non assegnato\", function () {",
+              "  pm.expect(Array.isArray(detail.allowed_transitions)).to.eql(true);",
+              "  pm.expect(detail.allowed_transitions.length).to.eql(0);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Foreign Transition Forbidden",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{foreign_exam_id}}/state-transitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{foreign_exam_id}}",
+            "state-transitions"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"target_status\": \"ARRIVED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Foreign transition 403\", function () {",
+              "  pm.response.to.have.status(403);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.test(\"Messaggio autorizzazione presente\", function () {",
+              "  pm.expect(String(body.detail).toLowerCase()).to.include(\"autorizz\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Managed Exam Detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{managed_exam_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{managed_exam_id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Managed exam detail 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var detail = pm.response.json();",
+              "var mode = pm.collectionVariables.get(\"managed_exam_mode\");",
+              "",
+              "if (mode === \"ACTIVE\") {",
+              "  pm.test(\"In turno: transizioni disponibili\", function () {",
+              "    pm.expect(detail.allowed_transitions.length).to.be.above(0);",
+              "  });",
+              "} else {",
+              "  pm.test(\"Fuori turno: transizioni nascoste\", function () {",
+              "    pm.expect(detail.allowed_transitions.length).to.eql(0);",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Managed Transition",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{managed_exam_id}}/state-transitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{managed_exam_id}}",
+            "state-transitions"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"target_status\": \"{{target_status}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var expected = Number(pm.collectionVariables.get(\"expected_transition_http_status\"));",
+              "",
+              "pm.test(\"Managed transition status atteso\", function () {",
+              "  pm.expect(pm.response.code).to.eql(expected);",
+              "});",
+              "",
+              "if (expected === 200) {",
+              "  var body = pm.response.json();",
+              "  var targetStatus = pm.collectionVariables.get(\"target_status\");",
+              "",
+              "  pm.test(\"Transizione applicata\", function () {",
+              "    pm.expect(body.current_status).to.eql(targetStatus);",
+              "  });",
+              "",
+              "  pm.collectionVariables.set(\"managed_new_status\", body.current_status);",
+              "  pm.execution.setNextRequest(\"13. Verify Managed Exam Updated\");",
+              "} else {",
+              "  var body = pm.response.json();",
+              "",
+              "  pm.test(\"Cambio stato bloccato fuori fascia\", function () {",
+              "    pm.expect(String(body.detail).toLowerCase()).to.include(\"fascia\");",
+              "  });",
+              "",
+              "  pm.execution.setNextRequest(\"14. Summary\");",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Verify Managed Exam Updated",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{managed_exam_id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{managed_exam_id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Verify detail 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var detail = pm.response.json();",
+              "var expectedStatus = pm.collectionVariables.get(\"managed_new_status\");",
+              "",
+              "pm.test(\"Stato aggiornato persistito\", function () {",
+              "  pm.expect(detail.status).to.eql(expectedStatus);",
+              "});",
+              "",
+              "pm.test(\"Audit events presenti\", function () {",
+              "  pm.expect(detail.audit_events.length).to.be.at.least(1);",
+              "});",
+              "",
+              "pm.execution.setNextRequest(\"14. Summary\");"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Summary 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var mode = pm.collectionVariables.get(\"managed_exam_mode\");",
+              "var expected = pm.collectionVariables.get(\"expected_transition_http_status\");",
+              "",
+              "console.log(\"--- REVELIO POSTMAN SMOKE SUMMARY ---\");",
+              "console.log(\"Tecnico:\", pm.collectionVariables.get(\"technician_username\"), pm.collectionVariables.get(\"technician_full_name\"));",
+              "console.log(\"Exam mode:\", mode);",
+              "console.log(\"Expected transition status:\", expected);",
+              "console.log(\"Foreign exam id:\", pm.collectionVariables.get(\"foreign_exam_id\"));",
+              "console.log(\"Managed exam id:\", pm.collectionVariables.get(\"managed_exam_id\"));",
+              "console.log(\"-------------------------------------\");"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. UC Setup - Login Amaggio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"Amaggio\",\n  \"password\": \"Alessiom92!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC login Amaggio 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.collectionVariables.set(\"uc_candidate_token\", body.access_token);",
+              "pm.collectionVariables.set(\"uc_candidate_id\", String(body.technician.id));",
+              "pm.collectionVariables.set(\"uc_candidate_username\", body.technician.username);",
+              "pm.collectionVariables.set(\"uc_candidate_full_name\", body.technician.full_name);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. UC Setup - Check Amaggio Active (RM)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_candidate_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/RM/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "RM",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC check RM 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "var candidateId = Number(pm.collectionVariables.get(\"uc_candidate_id\"));",
+              "",
+              "var ownActiveSession = data.sessions.find(function (s) {",
+              "  return s.technician_id === candidateId && s.is_active_now;",
+              "});",
+              "",
+              "if (ownActiveSession) {",
+              "  var scheduledOrArrived = ownActiveSession.exams.find(function (e) {",
+              "    return e.status === \"SCHEDULED\" || e.status === \"ARRIVED\";",
+              "  });",
+              "",
+              "  pm.test(\"UC candidato attivo con esame valido\", function () {",
+              "    pm.expect(scheduledOrArrived).to.not.eql(undefined);",
+              "  });",
+              "",
+              "  pm.collectionVariables.set(\"uc_active_token\", pm.collectionVariables.get(\"uc_candidate_token\"));",
+              "  pm.collectionVariables.set(\"uc_active_technician_id\", pm.collectionVariables.get(\"uc_candidate_id\"));",
+              "  pm.collectionVariables.set(\"uc_active_username\", pm.collectionVariables.get(\"uc_candidate_username\"));",
+              "  pm.collectionVariables.set(\"uc_active_machine\", \"RM\");",
+              "  pm.collectionVariables.set(\"uc_foreign_machine\", \"TC\");",
+              "  pm.collectionVariables.set(\"uc_exam_400_id\", String(scheduledOrArrived.id));",
+              "  pm.collectionVariables.set(\"uc_exam_409_id\", String(scheduledOrArrived.id));",
+              "",
+              "  pm.execution.setNextRequest(\"21. UC Setup - Fetch Foreign Worklist\");",
+              "} else {",
+              "  pm.execution.setNextRequest(\"17. UC Setup - Login Rmaselli\");",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. UC Setup - Login Rmaselli",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"Rmaselli\",\n  \"password\": \"Robertom79!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC login Rmaselli 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.collectionVariables.set(\"uc_candidate_token\", body.access_token);",
+              "pm.collectionVariables.set(\"uc_candidate_id\", String(body.technician.id));",
+              "pm.collectionVariables.set(\"uc_candidate_username\", body.technician.username);",
+              "pm.collectionVariables.set(\"uc_candidate_full_name\", body.technician.full_name);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. UC Setup - Check Rmaselli Active (TC)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_candidate_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/TC/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "TC",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC check TC 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "var candidateId = Number(pm.collectionVariables.get(\"uc_candidate_id\"));",
+              "",
+              "var ownActiveSession = data.sessions.find(function (s) {",
+              "  return s.technician_id === candidateId && s.is_active_now;",
+              "});",
+              "",
+              "if (ownActiveSession) {",
+              "  var scheduledOrArrived = ownActiveSession.exams.find(function (e) {",
+              "    return e.status === \"SCHEDULED\" || e.status === \"ARRIVED\";",
+              "  });",
+              "",
+              "  pm.test(\"UC candidato attivo con esame valido\", function () {",
+              "    pm.expect(scheduledOrArrived).to.not.eql(undefined);",
+              "  });",
+              "",
+              "  pm.collectionVariables.set(\"uc_active_token\", pm.collectionVariables.get(\"uc_candidate_token\"));",
+              "  pm.collectionVariables.set(\"uc_active_technician_id\", pm.collectionVariables.get(\"uc_candidate_id\"));",
+              "  pm.collectionVariables.set(\"uc_active_username\", pm.collectionVariables.get(\"uc_candidate_username\"));",
+              "  pm.collectionVariables.set(\"uc_active_machine\", \"TC\");",
+              "  pm.collectionVariables.set(\"uc_foreign_machine\", \"RM\");",
+              "  pm.collectionVariables.set(\"uc_exam_400_id\", String(scheduledOrArrived.id));",
+              "  pm.collectionVariables.set(\"uc_exam_409_id\", String(scheduledOrArrived.id));",
+              "",
+              "  pm.execution.setNextRequest(\"21. UC Setup - Fetch Foreign Worklist\");",
+              "} else {",
+              "  pm.execution.setNextRequest(\"19. UC Setup - Login Edipiero\");",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. UC Setup - Login Edipiero",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"Edipiero\",\n  \"password\": \"Erikad98!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC login Edipiero 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.collectionVariables.set(\"uc_candidate_token\", body.access_token);",
+              "pm.collectionVariables.set(\"uc_candidate_id\", String(body.technician.id));",
+              "pm.collectionVariables.set(\"uc_candidate_username\", body.technician.username);",
+              "pm.collectionVariables.set(\"uc_candidate_full_name\", body.technician.full_name);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. UC Setup - Check Edipiero Active (RX)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_candidate_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/RX/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "RX",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC check RX 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "var candidateId = Number(pm.collectionVariables.get(\"uc_candidate_id\"));",
+              "",
+              "var ownActiveSession = data.sessions.find(function (s) {",
+              "  return s.technician_id === candidateId && s.is_active_now;",
+              "});",
+              "",
+              "pm.test(\"Almeno un tecnico deve essere attivo\", function () {",
+              "  pm.expect(ownActiveSession).to.not.eql(undefined);",
+              "});",
+              "",
+              "var scheduledOrArrived = ownActiveSession ? ownActiveSession.exams.find(function (e) {",
+              "  return e.status === \"SCHEDULED\" || e.status === \"ARRIVED\";",
+              "}) : undefined;",
+              "",
+              "pm.test(\"UC candidato attivo con esame valido\", function () {",
+              "  pm.expect(scheduledOrArrived).to.not.eql(undefined);",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"uc_active_token\", pm.collectionVariables.get(\"uc_candidate_token\"));",
+              "pm.collectionVariables.set(\"uc_active_technician_id\", pm.collectionVariables.get(\"uc_candidate_id\"));",
+              "pm.collectionVariables.set(\"uc_active_username\", pm.collectionVariables.get(\"uc_candidate_username\"));",
+              "pm.collectionVariables.set(\"uc_active_machine\", \"RX\");",
+              "pm.collectionVariables.set(\"uc_foreign_machine\", \"TC\");",
+              "pm.collectionVariables.set(\"uc_exam_400_id\", String(scheduledOrArrived.id));",
+              "pm.collectionVariables.set(\"uc_exam_409_id\", String(scheduledOrArrived.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. UC Setup - Fetch Foreign Worklist",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_active_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/{{uc_foreign_machine}}/worklist",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "machines",
+            "{{uc_foreign_machine}}",
+            "worklist"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC foreign worklist 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "var activeTechId = Number(pm.collectionVariables.get(\"uc_active_technician_id\"));",
+              "",
+              "var foreignExam = null;",
+              "",
+              "data.sessions.forEach(function (session) {",
+              "  if (foreignExam) {",
+              "    return;",
+              "  }",
+              "",
+              "  if (session.technician_id === activeTechId) {",
+              "    return;",
+              "  }",
+              "",
+              "  if (Array.isArray(session.exams) && session.exams.length > 0) {",
+              "    foreignExam = session.exams[0];",
+              "  }",
+              "});",
+              "",
+              "pm.test(\"Esame foreign per 403 trovato\", function () {",
+              "  pm.expect(foreignExam).to.not.eql(null);",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"uc_exam_403_id\", String(foreignExam.id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22. UC-06 - CANCELLED senza nota (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_active_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{uc_exam_400_id}}/state-transitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{uc_exam_400_id}}",
+            "state-transitions"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"target_status\": \"CANCELLED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC-06 CANCELLED senza nota -> 400\", function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.test(\"Messaggio nota obbligatoria presente\", function () {",
+              "  pm.expect(String(body.detail).toLowerCase()).to.include(\"nota\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23. UC-06 - Errore autorizzazione (403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_active_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{uc_exam_403_id}}/state-transitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{uc_exam_403_id}}",
+            "state-transitions"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"target_status\": \"ARRIVED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC-06 errore autorizzazione -> 403\", function () {",
+              "  pm.response.to.have.status(403);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.test(\"Messaggio autorizzazione presente\", function () {",
+              "  var detail = String(body.detail).toLowerCase();",
+              "  pm.expect(detail.includes(\"autorizz\") || detail.includes(\"sessione\")).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24. UC-06 - Errore transizione non valida (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{uc_active_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/exams/{{uc_exam_409_id}}/state-transitions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "exams",
+            "{{uc_exam_409_id}}",
+            "state-transitions"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"target_status\": \"COMPLETED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC-06 transizione non valida -> 409\", function () {",
+              "  pm.response.to.have.status(409);",
+              "});",
+              "",
+              "var body = pm.response.json();",
+              "pm.test(\"Messaggio transizione non valida presente\", function () {",
+              "  pm.expect(String(body.detail).toLowerCase()).to.include(\"transizione\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25. UC Summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"UC summary 200\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "console.log(\"--- UC-06 ERROR COVERAGE ---\");",
+              "console.log(\"Tecnico attivo selezionato:\", pm.collectionVariables.get(\"uc_active_username\"));",
+              "console.log(\"Esame 400:\", pm.collectionVariables.get(\"uc_exam_400_id\"));",
+              "console.log(\"Esame 403:\", pm.collectionVariables.get(\"uc_exam_403_id\"));",
+              "console.log(\"Esame 409:\", pm.collectionVariables.get(\"uc_exam_409_id\"));",
+              "console.log(\"----------------------------\");"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "username",
+      "value": "Amaggio"
+    },
+    {
+      "key": "password",
+      "value": "Alessiom92!"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "technician_id",
+      "value": ""
+    },
+    {
+      "key": "technician_username",
+      "value": ""
+    },
+    {
+      "key": "technician_full_name",
+      "value": ""
+    },
+    {
+      "key": "machine_codes",
+      "value": "[]"
+    },
+    {
+      "key": "worklist_RM",
+      "value": ""
+    },
+    {
+      "key": "worklist_TC",
+      "value": ""
+    },
+    {
+      "key": "worklist_RX",
+      "value": ""
+    },
+    {
+      "key": "foreign_exam_id",
+      "value": ""
+    },
+    {
+      "key": "managed_exam_id",
+      "value": ""
+    },
+    {
+      "key": "managed_exam_mode",
+      "value": ""
+    },
+    {
+      "key": "target_status",
+      "value": ""
+    },
+    {
+      "key": "expected_transition_http_status",
+      "value": ""
+    },
+    {
+      "key": "managed_new_status",
+      "value": ""
+    },
+    {
+      "key": "uc_candidate_token",
+      "value": ""
+    },
+    {
+      "key": "uc_candidate_id",
+      "value": ""
+    },
+    {
+      "key": "uc_candidate_username",
+      "value": ""
+    },
+    {
+      "key": "uc_candidate_full_name",
+      "value": ""
+    },
+    {
+      "key": "uc_active_token",
+      "value": ""
+    },
+    {
+      "key": "uc_active_technician_id",
+      "value": ""
+    },
+    {
+      "key": "uc_active_username",
+      "value": ""
+    },
+    {
+      "key": "uc_active_machine",
+      "value": ""
+    },
+    {
+      "key": "uc_foreign_machine",
+      "value": ""
+    },
+    {
+      "key": "uc_exam_400_id",
+      "value": ""
+    },
+    {
+      "key": "uc_exam_403_id",
+      "value": ""
+    },
+    {
+      "key": "uc_exam_409_id",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level prerequest script intentionally minimal."
+        ]
+      }
+    }
+  ]
+}

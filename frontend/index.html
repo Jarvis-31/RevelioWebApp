@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Revelio</title>
+    <meta
+      name="description"
+      content="Revelio, sistema di gestione radiologica per login tecnico, dashboard macchine, worklist ed esami."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" as="image" href="/images/Risonanza%20magnetica.jpg" />
+    <link rel="preload" as="image" href="/images/Tomografia%20computerizzata.png" />
+    <link rel="preload" as="image" href="/images/Radiografia.png" />
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-root"></div>
+    <script>
+      window.REVELIO_API_BASE = window.REVELIO_API_BASE || "/api/v1";
+    </script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
