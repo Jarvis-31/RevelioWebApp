@@ -77,7 +77,6 @@ class ExamStateService:
         if exam is None:
             raise ResourceNotFoundError("Esame non trovato.")
 
-        # La FSM è gestibile solo dal tecnico assegnato nella propria fascia oraria.
         self._check_authorization(exam, current_technician)
         self._validate_transition(exam, target_status)
         self._validate_mandatory_note(target_status, note)
@@ -162,7 +161,6 @@ class ExamStateService:
         *,
         current_technician: Technician,
     ) -> ExamDetailResponse:
-        # Fuori autorizzazione/finestra temporale il frontend non può ricevere transizioni.
         can_manage_state = (
             exam.session.technician_id == current_technician.id
             and self._is_within_session_window(exam)

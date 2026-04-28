@@ -15,7 +15,6 @@ from app.seed import seed_database
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Manteniamo schema e seed coerenti ad ogni avvio dell'ambiente demo.
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
@@ -44,7 +43,6 @@ def health_check() -> dict[str, str]:
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if frontend_dir.exists():
-    # Frontend statico servito dalla stessa istanza FastAPI.
     app.mount(
         "/",
         StaticFiles(directory=frontend_dir, html=True),

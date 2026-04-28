@@ -431,7 +431,6 @@ def _seed_exams_and_audit(
 
         for exam_blueprint in blueprint["exams"]:
             scheduled_time = session.start_at + timedelta(minutes=exam_blueprint["offset_minutes"])
-            # Se la sessione non è attiva, tutti gli esami restano PROGRAMMATI.
             status = exam_blueprint["status"] if session_is_active else ExamStatus.SCHEDULED
             audit_events = _build_audit_events(
                 status=status,

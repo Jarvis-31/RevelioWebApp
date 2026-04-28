@@ -1,108 +1,159 @@
-# Revelio
+# 🩻 Revelio Web App
 
-Web app radiology workflow con backend FastAPI e frontend statico servito dalla stessa applicazione.
+Web app full-stack API-based per la gestione del workflow degli esami in una struttura sanitaria di diagnostica per immagini.
 
-## Struttura progetto
+![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![FastAPI](https://img.shields.io/badge/fastapi-0.135.3-green.svg)
+![SQLite](https://img.shields.io/badge/database-SQLite-lightgrey.svg)
+![Postman](https://img.shields.io/badge/test-Postman-orange.svg)
 
-- `backend/` API FastAPI, logica dominio, seed dati, script smoke test.
-- `frontend/` interfaccia web (HTML/CSS/JS) montata da FastAPI.
+## 🚀 Avvio Rapido
 
-## Avvio locale (come in demo)
+Dopo aver clonato il repository, dalla cartella principale del progetto è possibile avviare l'applicazione con uno script dedicato.
 
-Prerequisiti: Python 3.11+.
+### macOS / Linux
 
-1. Crea il virtual environment:
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
+./start.sh
 ```
-2. Installa dipendenze:
-```bash
-pip install -r requirements.txt
-```
-3. Crea configurazione locale:
-```bash
-cp .env.example .env
-```
-4. Avvia il server:
-```bash
-uvicorn app.main:app --reload
-```
-5. Apri nel browser:
-- App: `http://127.0.0.1:8000/`
-- API docs: `http://127.0.0.1:8000/docs`
+### Windows
 
-## Credenziali seed per test
-
-Definite in `backend/app/seed/seed_data.py`:
-
-- `Amaggio` / `Alessiom92!` (Risonanza Magnetica)
-- `Rmaselli` / `Robertom79!` (Tomografia Computerizzata)
-- `Edipiero` / `Erikad98!` (Radiografia Tradizionale)
-
-## Dati da cambiare se vuoi personalizzare i test
-
-- Configurazione ambiente: `backend/.env`
-  - `SECRET_KEY`
-  - `ACCESS_TOKEN_EXPIRE_MINUTES`
-  - `DEBUG`
-  - `DATABASE_URL`
-- Utenti di test e password seed: `backend/app/seed/seed_data.py`
-  - `TECHNICIAN_DEFINITIONS`
-- Dataset esami/sessioni seed: `backend/app/seed/seed_data.py`
-  - `MACHINE_SHIFT_BLUEPRINTS`
-  - `PATIENT_DEFINITIONS`
-
-Dopo modifiche al seed, elimina `backend/revelio.db` e riavvia `uvicorn` per rigenerare dati coerenti.
-
-## Cosa caricare su GitHub
-
-Da caricare:
-- codice sorgente (`backend/app`, `backend/scripts`, `frontend`)
-- `backend/requirements.txt`
-- `backend/.env.example`
-- `README.md`
-- `.gitignore`
-
-Da NON caricare:
-- `backend/.env` (segreti locali)
-- `backend/.venv/` (virtual environment)
-- `*.db` / `*.sqlite*` (database locale)
-- `__pycache__/`, `*.pyc`
-- file IDE/OS (`.DS_Store`, `.vscode/`)
-
-## Smoke test rapido
-
-Con server non avviato in parallelo:
-```bash
-backend/.venv/bin/python backend/scripts/smoke_test.py
+```bat
+start.bat
 ```
 
-## Test API con Postman
+Gli script creano l'ambiente virtuale, installano le dipendenze, preparano il file `.env` locale se mancante e avviano il server FastAPI.
 
-File pronti da importare:
-- `backend/tests/postman/Revelio_API_Smoke_FSM.postman_collection.json`
-- `backend/tests/postman/Revelio_Local.postman_environment.json`
+Accedi all'applicazione su: http://127.0.0.1:8000/
 
-Esecuzione:
-1. Avvia backend con `uvicorn app.main:app --reload` da `backend/`.
-2. Importa collection + environment in Postman.
+Documentazione API Swagger: http://127.0.0.1:8000/docs
+
+## 🔐 Credenziali Demo
+
+- Username: `Amaggio` / Password: `Alessiom92!` - Risonanza Magnetica
+- Username: `Rmaselli` / Password: `Robertom79!` - Tomografia Computerizzata
+- Username: `Edipiero` / Password: `Erikad98!` - Radiologia Tradizionale
+
+## ✨ Funzionalità Principali
+
+- 👤 Login del tecnico radiologo con autenticazione JWT
+- 🖥️ Dashboard con panoramica dei macchinari disponibili
+- 📋 Worklist organizzata per RM, TC e RX
+- 🕒 Visualizzazione di sessioni operative e fasce orarie
+- 🧑‍⚕️ Dettaglio dell'esame con dati paziente, tecnico e stato corrente
+- 🔄 Cambio stato dell'esame tramite FSM
+- ⛔ Blocco delle transizioni non valide o non autorizzate
+- 📝 Nota obbligatoria in caso di cancellazione
+- 🧾 Registrazione dello storico tramite audit event
+- 📱 Frontend semplice e responsive
+
+## 📋 Requisiti
+
+- Python 3.11 o superiore
+- Browser web aggiornato
+- Accesso Internet per scaricare le dipendenze pip, se necessario
+- Ambiente virtuale Python consigliato
+- Sistema operativo macOS, Linux o Windows
+
+## ⚙️ Installazione Manuale
+
+Se si preferisce avviare il progetto senza script, seguire questi passaggi.
+
+1. **Entra nella cartella backend**
+
+   ```bash
+   cd backend
+   ```
+
+2. **Crea e attiva l'ambiente virtuale**
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+   Su Windows:
+
+   ```bat
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+
+3. **Installa le dipendenze**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Crea il file di configurazione locale**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Su Windows:
+
+   ```bat
+   copy .env.example .env
+   ```
+
+5. **Avvia il server**
+
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+## 🧪 Test API con Postman
+
+Il progetto include una collection Postman per verificare il comportamento delle API principali.
+
+File da importare:
+
+- `Test Postman/Revelio_API_FSM.postman_collection.json`
+- `Test Postman/Revelio_Local.postman_environment.json`
+
+Per eseguire i test:
+
+1. Avvia il backend.
+2. Importa collection ed environment in Postman.
 3. Seleziona l'environment `Revelio Local`.
-4. Esegui la collection in ordine (01..14).
+4. Esegui la collection completa nell'ordine previsto.
 
-La suite verifica autenticazione, worklist, regole FSM e vincoli di autorizzazione/turno.
-Include anche i casi UC-06 di errore: `400` (CANCELLED senza nota), `403` (autorizzazione), `409` (transizione non valida).
+La collection verifica:
 
-## Pubblicazione su GitHub
+- health check dell'API
+- login del tecnico radiologo
+- lettura del profilo autenticato
+- elenco dei macchinari
+- worklist per RM, TC e RX
+- dettaglio esame
+- regole della FSM
+- vincoli di autorizzazione
+- controllo della fascia oraria
+- persistenza dello stato e degli audit event
+- casi di errore principali: `400`, `403`, `409`
 
-1. Crea una repository vuota su GitHub (senza README iniziale).
-2. Dalla root del progetto esegui:
+## 🔄 Reset Database
+
+Il progetto utilizza un database SQLite locale. Per ripristinare lo scenario dimostrativo è sufficiente eliminare:
+
 ```bash
-git add -A
-git commit -m "chore: clean repository and prepare secure GitHub release"
-git branch -M main
-git remote add origin <URL_REPO_GITHUB>
-git push -u origin main
+backend/revelio.db
 ```
-3. Condividi con il professore l'URL della repository.
+
+Al successivo avvio, il backend ricrea automaticamente lo schema e inserisce i dati seed.
+
+Il seed iniziale comprende:
+
+- 3 tecnici radiologi
+- 3 macchinari: RM, TC, RX
+- 15 pazienti dimostrativi
+- sessioni operative giornaliere
+- esami distribuiti nei diversi stati della FSM
+- eventi audit iniziali per gli esami già avanzati nel workflow
+
+## 📝 Nota
+
+Revelio Web App è stato sviluppato come elaborato dimostrativo. L'applicazione simula il workflow radiologico e permette di verificare login, worklist, cambio stato, autorizzazioni e audit, ma non integra sistemi sanitari reali come RIS, PACS o DICOM.
+
+Per un utilizzo reale sarebbero necessari ulteriori sviluppi su sicurezza, gestione utenti, database, backup, ruoli applicativi e integrazione con sistemi clinici.
